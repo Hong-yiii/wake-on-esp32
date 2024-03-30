@@ -1,8 +1,13 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <httpclient.h>
+#include <ArduinoJson.h>
+#include <time.h>
 
 const char* ssid = "LinFam";
 const char* password = "3132333435";
+const String botToken = "6442956187:AAEfAjAEmqmM_V_Qm87_IEdNNzQcgBaVLXs";
+long last_update_time = 0;// have to implement after learning time.h
 
 // put function declarations here:
 int myFunction(int, int);
