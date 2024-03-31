@@ -5,11 +5,13 @@
 #include <time.h>
 #include "secrets.h"
 
+// function declerations
+void query_telegram_API(bool button_pressed);
+void press_button();
 
-long last_update_time = 0;// have to implement after learning time.h
 
-// put function declarations here:
-int myFunction(int, int);
+long last_update_time = 0; // have to implement after learning time.h
+bool button_pressed = false; // when turning on, set to true, then back to false
 
 void setup() {
   // put your setup code here, to run once:
@@ -27,9 +29,28 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  query_telegram_API();
+  if (button_pressed == true) {
+    Serial.print("New rint message recieved, pressing button");
+    press_button();
+    // log accordingly
+
+    Serial.print("Logged successfully");
+  }
+  else {
+    // log no button press
+
+    Serial.print("Logged successfully");
+  }
+  delay(10000);
 }
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+
+// function definitions
+void query_telegram_API(bool button_pressed) {
+
+}
+
+void press_button() {
+
 }
