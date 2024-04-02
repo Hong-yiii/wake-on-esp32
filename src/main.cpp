@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <httpclient.h>
+#include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <time.h>
 #include "secrets.h"
@@ -18,7 +18,6 @@ void setup() {
   Serial.begin(115200);
   WiFi.begin(ssid, password);
   while( WiFi.status() != WL_CONNECTED) {
-    delay(500);
     Serial.print("Wifi is not WIFIing");
   }
   // display connected when it has connected
@@ -57,9 +56,8 @@ long int query_telegram_API() {
   if (http_code == 200) {
     String payload = http.getString();
     Serial.print("payload start < " + payload + " > payload end");
-    DynamicJsonDocument doc(1024);
+    StaticJsonDocument<2048> doc;
     DeserializationError serialization_error = deserializeJson(doc, payload);
-    http.end(); //http connection no longer needed
     // check for parsing errors
       if (serialization_error) {
         Serial.print("deserializeJson() failed: ");
@@ -78,17 +76,17 @@ long int query_telegram_API() {
 
     if (!latestUpdate.isNull() && latestUpdate.containsKey("message")) {
       String text = latestUpdate["message"]["text"].as<String>();
-      String UNIX_update_time= latestUpdate["message"]["date"].as<String>();
+      long UNIX_update_time= latestUpdate["message"]["date"].as<long>();
       update_id = latestUpdate["update_id"].as<long>(); // Update the update_id to the latest
       Serial.println(text);
       if (text == "On_PC") {
         press_button();
         button_pressed = true;
-        Serial.print("button pressed as of " + UNIX_update_time + "UNIX Time");
+        Serial.print("button pressed as of " + String(UNIX_update_time) + "UNIX Time");
+        http.end();
         return update_id;
       }
     }
-
   }
   else {
     Serial.print("could'nt connect to telegram API, return value !!= 200");
