@@ -18,12 +18,12 @@ void setup() {
   Serial.begin(115200);
   WiFi.begin(ssid, password);
   while( WiFi.status() != WL_CONNECTED) {
-    Serial.print("Wifi is not WIFIing");
+    Serial.println("Wifi is not WIFIing");
     delay(10000);
   }
   // display connected when it has connected
   if( WiFi.status() == WL_CONNECTED) {
-    Serial.print("WIFI is WIFIing");
+    Serial.println("WIFI is WIFIing");
   }
 }
 
@@ -31,17 +31,17 @@ void loop() {
   // put your main code here, to run repeatedly:
   update_id = query_telegram_API();
   if (button_pressed == true) {
-    Serial.print("New rint message recieved, pressing button");
+    Serial.println("New rint message recieved, pressing button");
     press_button();
     // log accordingly
 
-    Serial.print("Logged successfully");
+    Serial.println("Logged successfully");
     button_pressed = false; //reset the parameter
   }
   else {
     // log no button press
 
-    Serial.print("Logged successfully");
+    Serial.println("Logged successfully");
   }
   delay(10000);
 }
@@ -50,6 +50,7 @@ void loop() {
 // function definitions
 long int query_telegram_API() {
   HTTPClient http;
+  Serial.println(update_id);
   String url = "https://api.telegram.org/bot" + BotToken + "/getUpdates?offset=" + (update_id + 1);
   http.begin(url);
   int http_code = http.GET();
@@ -58,7 +59,7 @@ long int query_telegram_API() {
     String payload = http.getString();
     Serial.println("payload start < " + payload + " > payload end");
 
-    JsonDocument doc;
+    StaticJsonDocument<1024> doc;
     DeserializationError serialization_error = deserializeJson(doc, payload);
 
     http.end();
@@ -72,23 +73,25 @@ long int query_telegram_API() {
 
     JsonArray API_updates = doc["result"];
 
-    JsonObject latestUpdate;
     for (JsonObject update : API_updates) {
-      latestUpdate = update; // This will keep overwriting with the latest update
-    }
+      long current_update_id = update["update_id"].as<long>();
+      if (current_update_id > update_id) {
+        update_id = current_update_id; // Update the update_id to the highest one received
+      }
 
-    if (!latestUpdate.isNull() && latestUpdate.containsKey("message")) {
-      String text = latestUpdate["message"]["text"].as<String>();
-      long UNIX_update_time= latestUpdate["message"]["date"].as<long>();
-      update_id = latestUpdate["update_id"].as<long>(); // Update the update_id to the latest
-      Serial.println(text);
-      if (text == "On_PC") {
-        press_button();
-        button_pressed = true;
-        Serial.println("button pressed as of " + String(UNIX_update_time) + "UNIX Time");
-        return update_id;
+    if (update.containsKey("message")) {
+        String text = update["message"]["text"].as<String>();
+        long UNIX_update_time = update["message"]["date"].as<long>();
+        Serial.println(text);
+        if (text == "On_PC") {
+          press_button();
+          button_pressed = true;
+          Serial.println("button pressed as of " + String(UNIX_update_time) + " UNIX Time");
+          // Don't return yet, we need to process all updates
+        }
       }
     }
+    return update_id; // After processing all updates, return the highest update_id encountered
   }
   else {
     Serial.println("could'nt connect to telegram API, return value !!= 200");
