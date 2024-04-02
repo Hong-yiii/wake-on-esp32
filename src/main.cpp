@@ -19,6 +19,7 @@ void setup() {
   WiFi.begin(ssid, password);
   while( WiFi.status() != WL_CONNECTED) {
     Serial.print("Wifi is not WIFIing");
+    delay(10000);
   }
   // display connected when it has connected
   if( WiFi.status() == WL_CONNECTED) {
@@ -55,14 +56,16 @@ long int query_telegram_API() {
 
   if (http_code == 200) {
     String payload = http.getString();
-    Serial.print("payload start < " + payload + " > payload end");
-    StaticJsonDocument<2048> doc;
+    Serial.println("payload start < " + payload + " > payload end");
+
+    JsonDocument doc;
     DeserializationError serialization_error = deserializeJson(doc, payload);
+
+    http.end();
     // check for parsing errors
       if (serialization_error) {
-        Serial.print("deserializeJson() failed: ");
+        Serial.println("deserializeJson() failed: ");
         Serial.println(serialization_error.c_str());
-        http.end();
         return update_id;
         //log failure
       }
@@ -82,14 +85,13 @@ long int query_telegram_API() {
       if (text == "On_PC") {
         press_button();
         button_pressed = true;
-        Serial.print("button pressed as of " + String(UNIX_update_time) + "UNIX Time");
-        http.end();
+        Serial.println("button pressed as of " + String(UNIX_update_time) + "UNIX Time");
         return update_id;
       }
     }
   }
   else {
-    Serial.print("could'nt connect to telegram API, return value !!= 200");
+    Serial.println("could'nt connect to telegram API, return value !!= 200");
     http.end();
     return update_id;
     // log accordingly
@@ -97,5 +99,5 @@ long int query_telegram_API() {
 }
 
 void press_button() {
-  Serial.print("Press button has been called");
+  Serial.println("Press button has been called");
 }
