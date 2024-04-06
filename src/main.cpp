@@ -10,12 +10,15 @@ long int query_telegram_API();
 void press_button(); // function should press and then release
 
 
+const int Pmos_gate = 13;
 long int update_id = 0; // although initialized to 0, the first query will return ALL values with update ID > 1 hence returning everything
 bool button_pressed = false; // when turning on, set to true, then back to false
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
+  pinMode(Pmos_gate, OUTPUT);
+  digitalWrite(Pmos_gate, HIGH);  
   WiFi.begin(ssid, password);
   while( WiFi.status() != WL_CONNECTED) {
     Serial.println("Wifi is not WIFIing");
@@ -103,4 +106,12 @@ long int query_telegram_API() {
 
 void press_button() {
   Serial.println("Press button has been called");
+  // Set the GPIO pin LOW to turn on the PMOS (simulate button press)
+  digitalWrite(Pmos_gate, LOW);
+  
+  // Wait for 1 second
+  delay(1000); // 1000 milliseconds = 1 second
+  
+  // Set the GPIO pin back to HIGH to turn off the PMOS (end button press simulation)
+  digitalWrite(Pmos_gate, HIGH);
 }
