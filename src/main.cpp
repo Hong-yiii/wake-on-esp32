@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <time.h>
 #include "secrets.h"
+#include <Ticker.h>
 
 // function declerations
 long int query_telegram_API();
@@ -11,8 +12,12 @@ void press_button(); // function should press and then release
 
 
 const int Pmos_gate = 13;
+const int LED_PIN = 2;
 long int update_id = 0; // although initialized to 0, the first query will return ALL values with update ID > 1 hence returning everything
 bool button_pressed = false; // when turning on, set to true, then back to false
+
+Ticker restartTimer;
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -28,6 +33,9 @@ void setup() {
   if( WiFi.status() == WL_CONNECTED) {
     Serial.println("WIFI is WIFIing");
   }
+
+  //perodic restarting (every hour)
+  restartTimer.attach(3600, restartESP);
 }
 
 void loop() {
@@ -53,20 +61,24 @@ void loop() {
 // function definitions
 long int query_telegram_API() {
   HTTPClient http;
-  Serial.println(update_id);
-  String url = "https://api.telegram.org/bot" + BotToken + "/getUpdates?offset=" + (update_id + 1);
-  http.begin(url);
-  int http_code = http.GET();
+  int maxRetries = 3;
+  int retryDelay = 5000; // 5 seconds
 
-  if (http_code == 200) {
-    String payload = http.getString();
-    Serial.println("payload start < " + payload + " > payload end");
+  for (int attempt = 0; attempt < maxRetries; attempt++) {
+    Serial.println("Current update ID is " + String(update_id));
+    String url = "https://api.telegram.org/bot" + BotToken + "/getUpdates?offset=" + String(update_id + 1);
+    http.begin(url);
+    int http_code = http.GET();
 
-    StaticJsonDocument<1024> doc;
-    DeserializationError serialization_error = deserializeJson(doc, payload);
+    if (http_code == 200) {
+      String payload = http.getString();
+      Serial.println("Received payload: " + payload);
 
-    http.end();
-    // check for parsing errors
+      StaticJsonDocument<1024> doc;
+      DeserializationError serialization_error = deserializeJson(doc, payload);
+
+      http.end();
+      // check for parsing errors
       if (serialization_error) {
         Serial.println("deserializeJson() failed: ");
         Serial.println(serialization_error.c_str());
@@ -74,38 +86,49 @@ long int query_telegram_API() {
         //log failure
       }
 
-    JsonArray API_updates = doc["result"];
+      JsonArray API_updates = doc["result"];
 
-    for (JsonObject update : API_updates) {
-      long current_update_id = update["update_id"].as<long>();
-      if (current_update_id > update_id) {
-        update_id = current_update_id; // Update the update_id to the highest one received
-      }
+      for (JsonObject update : API_updates) {
+        long current_update_id = update["update_id"].as<long>();
+        if (current_update_id > update_id) {
+          update_id = current_update_id; // Update the update_id to the highest one received
+        }
 
-    if (update.containsKey("message")) {
-        String text = update["message"]["text"].as<String>();
-        long UNIX_update_time = update["message"]["date"].as<long>();
-        Serial.println(text);
-        if (text == "On_PC") {
-          press_button();
-          button_pressed = true;
-          Serial.println("button pressed as of " + String(UNIX_update_time) + " UNIX Time");
-          // Don't return yet, we need to process all updates
+        if (update.containsKey("message")) {
+          String text = update["message"]["text"].as<String>();
+          long UNIX_update_time = update["message"]["date"].as<long>();
+          Serial.println(text);
+          if (text == "On_PC") {
+            button_pressed = true;
+            Serial.println("Button press command received at UNIX time: " + String(UNIX_update_time));
+            // Don't return yet, we need to process all updates
+          }
         }
       }
+      return update_id; // After processing all updates, return the highest update_id encountered
+    } else {
+      Serial.println("Couldn't connect to Telegram API, HTTP code: " + String(http_code));
+      http.end();
+      if (attempt < maxRetries - 1) {
+        Serial.println("Retrying in " + String(retryDelay) + "ms...");
+        delay(retryDelay);
+      } else {
+        Serial.println("Max retries reached. Giving up.");
+        return update_id;
+      }
     }
-    return update_id; // After processing all updates, return the highest update_id encountered
   }
-  else {
-    Serial.println("could'nt connect to telegram API, return value !!= 200");
-    http.end();
-    return update_id;
-    // log accordingly
-  }
+  return update_id;
 }
 
 void press_button() {
   Serial.println("Press button has been called");
+  //flash on board LED
+    digitalWrite(LED_PIN, HIGH);
+    delay(1000); // LED on for 1 second
+     digitalWrite(LED_PIN, LOW);
+
+
   // Set the GPIO pin LOW to turn on the PMOS (simulate button press)
   digitalWrite(Pmos_gate, LOW);
   
@@ -114,4 +137,9 @@ void press_button() {
   
   // Set the GPIO pin back to HIGH to turn off the PMOS (end button press simulation)
   digitalWrite(Pmos_gate, HIGH);
+}
+
+void restartESP() {
+  Serial.println("Restarting ESP32...");
+  ESP.restart();
 }
