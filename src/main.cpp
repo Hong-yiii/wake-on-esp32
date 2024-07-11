@@ -9,12 +9,14 @@
 // function declerations
 long int query_telegram_API();
 void press_button(); // function should press and then release
+void restartESP(); // restart hourly
 
 
 const int Pmos_gate = 13;
 const int LED_PIN = 2;
 long int update_id = 0; // although initialized to 0, the first query will return ALL values with update ID > 1 hence returning everything
 bool button_pressed = false; // when turning on, set to true, then back to false
+
 
 Ticker restartTimer;
 
@@ -23,11 +25,16 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   pinMode(Pmos_gate, OUTPUT);
-  digitalWrite(Pmos_gate, HIGH);  
+  digitalWrite(Pmos_gate, HIGH);
+  pinMode(LED_PIN, OUTPUT);
   WiFi.begin(ssid, password);
   while( WiFi.status() != WL_CONNECTED) {
+    int wifi_fails = 0;
     Serial.println("Wifi is not WIFIing");
     delay(10000);
+    if (wifi_fails > 10) {
+      ESP.restart();
+    }
   }
   // display connected when it has connected
   if( WiFi.status() == WL_CONNECTED) {
@@ -68,6 +75,7 @@ long int query_telegram_API() {
     Serial.println("Current update ID is " + String(update_id));
     String url = "https://api.telegram.org/bot" + BotToken + "/getUpdates?offset=" + String(update_id + 1);
     http.begin(url);
+    http.setTimeout(15000); // Set timeout to 15 seconds
     int http_code = http.GET();
 
     if (http_code == 200) {
@@ -126,7 +134,7 @@ void press_button() {
   //flash on board LED
     digitalWrite(LED_PIN, HIGH);
     delay(1000); // LED on for 1 second
-     digitalWrite(LED_PIN, LOW);
+    digitalWrite(LED_PIN, LOW);
 
 
   // Set the GPIO pin LOW to turn on the PMOS (simulate button press)
