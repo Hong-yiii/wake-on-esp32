@@ -5,6 +5,7 @@
 #include <time.h>
 #include "secrets.h"
 #include <Ticker.h>
+#include <esp_wifi.h>
 
 // function declerations
 long int query_telegram_API();
@@ -27,10 +28,12 @@ void setup() {
   pinMode(Pmos_gate, OUTPUT);
   digitalWrite(Pmos_gate, HIGH);
   pinMode(LED_PIN, OUTPUT);
+  esp_wifi_set_ps(WIFI_PS_NONE);
   WiFi.begin(ssid, password);
   while( WiFi.status() != WL_CONNECTED) {
     int wifi_fails = 0;
     Serial.println("Wifi is not WIFIing");
+    wifi_fails = wifi_fails + 1;
     delay(10000);
     if (wifi_fails > 10) {
       ESP.restart();
